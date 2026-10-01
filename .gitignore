@@ -1,3 +1,9 @@
 node_modules/
+config.env
 *.env
 .cache/
+public/js/bundle.js
+public/js/bundle.js.map
+# user uploads created at runtime (seed photos are user-<n>.jpg / default.jpg)
+public/img/users/user-*-*.jpeg
+public/img/tours/tour-*-*-*.jpeg

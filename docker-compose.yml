@@ -1,0 +1,13 @@
+# Local MongoDB for development: `npm run db:up`
+services:
+  mongo:
+    image: mongo:7
+    container_name: natours-mongo
+    restart: unless-stopped
+    ports:
+      - "27018:27017" # 27018 on the host avoids clashing with any existing local MongoDB
+    volumes:
+      - natours-mongo-data:/data/db
+
+volumes:
+  natours-mongo-data:

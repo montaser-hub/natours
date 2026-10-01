@@ -2,19 +2,28 @@ extends base.pug
 
 block content
     main.main
-        .card-container
+        if heading
+            h2.heading-secondary.page-heading= heading
 
+        if !tours.length
+            .empty-state
+                svg.empty-state__icon(aria-hidden='true')
+                    use(xlink:href='/img/icons.svg#icon-compass')
+                p.empty-state__text= emptyMessage || 'No tours available right now.'
+                a.btn.btn--green.btn--small(href='/') Browse tours
+
+        .card-container
             each tour in tours
                 .card
                     .card__header
                         .card__picture
                             .card__picture-overlay &nbsp;
-                            img.card__picture-img(src= `/img/tours/${tour.imageCover}`, alt=`${tour.name}`)
+                            img.card__picture-img(src=`/img/tours/${tour.imageCover}`, alt=`${tour.name}`)
                         h3.heading-tertirary
                             span= tour.name
 
                     .card__details
-                        h4.card__sub-heading= `${tour.difficulty} ${tour.duration}`
+                        h4.card__sub-heading= `${tour.difficulty} ${tour.duration}-day tour`
                         p.card__text= tour.summary
                         .card__data
                             svg.card__icon
@@ -23,24 +32,21 @@ block content
                         .card__data
                             svg.card__icon
                                 use(xlink:href='/img/icons.svg#icon-calendar')
-                            span= tour.startDates[0].toLocaleString('en-us',{month: 'long', year: 'numeric'})
+                            span= tour.startDates.length ? tour.startDates[0].toLocaleString('en-us', { month: 'long', year: 'numeric' }) : 'Dates TBA'
                         .card__data
                             svg.card__icon
                                 use(xlink:href='/img/icons.svg#icon-flag')
-                            span= `${tour.locations.length}`
+                            span= `${tour.locations.length} stops`
                         .card__data
                             svg.card__icon
                                 use(xlink:href='/img/icons.svg#icon-user')
-                            span= `${tour.maxGroupSize}`
+                            span= `${tour.maxGroupSize} people`
 
                     .card__footer
                         p
                             span.card__footer-value= `$${tour.price}`
-                            | 
-                            span.card__footer-text per person
+                            span.card__footer-text= ' per person'
                         p.card__ratings
                             span.card__footer-value= tour.ratingsAverage
-                            | 
-                            span.card__footer-text= `rating (${tour.ratingsQuantity})`
-                            //- add / before tour url called relative url to add this peice of url after the host name 
+                            span.card__footer-text= ` rating (${tour.ratingsQuantity})`
                         a.btn.btn--green.btn--small(href=`/tour/${tour.slug}`) Details

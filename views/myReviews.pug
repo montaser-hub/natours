@@ -1,0 +1,20 @@
+extends _accountLayout.pug
+include _reviewCard
+
+block account
+    .user-view__form-container
+        h2.heading-secondary.ma-bt-md My reviews
+
+        if !reviews.length
+            p.empty-note You haven't reviewed any tours yet. Reviews open up once you've booked a tour.
+        else
+            ul.my-reviews
+                each review in reviews
+                    li.my-review
+                        if review.tour
+                            a.my-review__tour(href=`/tour/${review.tour.slug}`)
+                                img.my-review__img(src=`/img/tours/${review.tour.imageCover}` alt='')
+                                span= review.tour.name
+                        +stars(review.rating)
+                        p.my-review__text= review.review
+                        p.my-review__date= review.createdAt.toLocaleDateString('en-us', { day: 'numeric', month: 'long', year: 'numeric' })

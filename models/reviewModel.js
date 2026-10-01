@@ -67,12 +67,13 @@ reviewSchema.statics.calcAverageRatings = async function (tourId) {
     //update the tour document with the new stats
     await Tour.findByIdAndUpdate(tourId, {
       ratingsQuantity: stats[0].nRating,
-      ratingsAvrage: stats[0].averageRating,
+      ratingsAverage: stats[0].averageRating,
     });
   } else {
+    // No reviews left: fall back to the schema default rather than 0 stars.
     await Tour.findByIdAndUpdate(tourId, {
       ratingsQuantity: 0,
-      ratingsAvrage: 0,
+      ratingsAverage: 4.5,
     });
   }
 };
@@ -84,15 +85,15 @@ reviewSchema.post('save', function () {
 //to do so and use statics method here to work with findByIdAndUpdate, findByIdAndDelete that aquery middleware do below sequance
 //use query middleware to find document
 reviewSchema.pre(/^findOneAnd/, async function (next) {
-  this.r = await this.findOne(); //to passvariable from query middleware to document middleware
-  // console.log(r);
+  // clone(): Mongoose 6+ refuses to execute the same query object twice
+  this.r = await this.clone().findOne(); // pass the doc from query middleware to post middleware
   next();
 });
 
 //then can use post middleware to excute the static method to update the tour statistics
 reviewSchema.post(/^findOneAnd/, async function () {
   //this.r = await this.findOne(); does not work here, query already excuted
-  await this.r.constructor.calcAverageRatings(this.r.tour);
+  if (this.r) await this.r.constructor.calcAverageRatings(this.r.tour);
 });
 
 const Review = mongoose.model('Review', reviewSchema);

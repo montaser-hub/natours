@@ -1,0 +1,25 @@
+extends base.pug
+
+mixin navItem(link, text, icon, key)
+    li(class=active === key ? 'side-nav--active' : undefined)
+        a(href=link aria-current=active === key ? 'page' : undefined)
+            svg(aria-hidden='true')
+                use(xlink:href=`/img/icons.svg#icon-${icon}`)
+            | #{text}
+
+block content
+    main.main
+        .user-view
+            nav.user-view__menu(aria-label='Account')
+                ul.side-nav
+                    +navItem('/me', 'Settings', 'settings', 'settings')
+                    +navItem('/my-tours', 'My bookings', 'briefcase', 'bookings')
+                    +navItem('/my-reviews', 'My reviews', 'star', 'reviews')
+
+                if user.role !== 'user'
+                    .admin-nav
+                        h5.admin-nav__heading= user.role.replace('-', ' ')
+                        p.admin-nav__text Staff accounts manage tours, users and bookings through the REST API (/api/v1).
+
+            .user-view__content
+                block account

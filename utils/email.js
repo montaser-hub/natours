@@ -1,17 +1,17 @@
 const nodemailer = require('nodemailer');
 const pug = require('pug');
-const htmlToText = require('html-to-text');
+const { convert } = require('html-to-text');
 
 module.exports = class Email {
   constructor(user, url) {
     this.to = user.email;
     this.firstName = user.name.split(' ')[0];
     this.url = url;
-    this.from = `Montaser Ismail <${process.env.EMAIL_FROM}>`;
+    this.from = `Natours <${process.env.EMAIL_FROM || 'hello@natours.local'}>`;
   }
 
   newTransport() {
-    if (process.env.NODE_ENV === 'production') {
+    if (process.env.NODE_ENV === 'production' && process.env.SENDGRID_PASSWORD) {
       //Sendgrid
       return nodemailer.createTransport({
         service: 'SendGrid',
@@ -20,6 +20,12 @@ module.exports = class Email {
           pass: process.env.SENDGRID_PASSWORD
         }
       });
+    }
+
+    // No SMTP configured (typical local setup): render the email and print it
+    // instead of failing the request that triggered it.
+    if (!process.env.EMAIL_HOST) {
+      return nodemailer.createTransport({ jsonTransport: true });
     }
 
     return nodemailer.createTransport({
@@ -46,10 +52,15 @@ module.exports = class Email {
       to: this.to,
       subject,
       html,
-      text: htmlToText.fromString(html)
+      text: convert(html, { wordwrap: 100 })
     };
     // 3) Create a transport and send email
-    await this.newTransport().sendMail(mailOptions);
+    const info = await this.newTransport().sendMail(mailOptions);
+    if (info.message && !process.env.EMAIL_HOST) {
+      console.log(
+        `\n📧 [dev email] To: ${this.to} | ${subject}\n${mailOptions.text}\n`
+      );
+    }
   }
 
   async sendWelcome() {

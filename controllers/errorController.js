@@ -5,9 +5,11 @@ const handleCastErrorDB = err => {
   return new AppError(message, 400);
 };
 const handleDuplicateFieldsDB = err => {
-  const value = err.keyValue.name;
-  console.log(value);
-  const message = `Duplicate field value for : ${value}, please enter another value`;
+  const [field, value] = Object.entries(err.keyValue || {})[0] || ['field', ''];
+  const message =
+    field === 'email'
+      ? 'An account with that email already exists. Please log in instead.'
+      : `Duplicate ${field}: "${value}". Please use another value.`;
   return new AppError(message, 400);
 };
 
@@ -75,29 +77,33 @@ const sendErrorProd = (err, req, res) => {
   console.error('ERROR: 💥', err);
 
   //2) Send generic message to client
-  return res.status(err.statusCode).render('error', {
+  return res.status(500).render('error', {
     title: 'Something went wrong',
     msg: 'Something went wrong'
   });
+};
+
+// Translate known DB/JWT errors into friendly operational errors.
+const normalize = err => {
+  if (err.name === 'CastError') return handleCastErrorDB(err);
+  if (err.code === 11000) return handleDuplicateFieldsDB(err);
+  if (err.name === 'ValidationError') return handleValidationErrorDB(err);
+  if (err.name === 'JsonWebTokenError') return handleJWTError();
+  if (err.name === 'TokenExpiredError') return handleJWTExpierdError();
+  return err;
 };
 
 module.exports = (err, req, res, next) => {
   err.statusCode = err.statusCode || 500;
   err.status = err.status || 'error';
 
-  if (process.env.NODE_ENV === 'development') {
-    sendErrorDev(err, req, res);
-  } else if (process.env.NODE_ENV === 'production') {
-    let error = { ...err };
-    error.message = err.message;
+  const error = normalize(err);
 
-    if (error.name === 'CastError') error = handleCastErrorDB(error);
-    if (error.code === 11000) error = handleDuplicateFieldsDB(error);
-    if (error.name === 'ValidationError') {
-      error = handleValidationErrorDB(error);
-    }
-    if (error.name === 'JsonWebTokenError') error = handleJWTError();
-    if (error.name === 'TokenExpiredError') error = handleJWTExpierdError();
+  if (process.env.NODE_ENV === 'development') {
+    // Friendly message and status, but keep the original stack for debugging.
+    error.stack = err.stack;
+    sendErrorDev(error, req, res);
+  } else {
     sendErrorProd(error, req, res);
   }
 };

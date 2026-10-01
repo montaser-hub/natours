@@ -12,18 +12,17 @@ const signToken = id => {
   });
 };
 
-const createSendToken = (user, statusCode, res) => {
+const createSendToken = (user, statusCode, req, res) => {
   const token = signToken(user._id);
-  const cookieOptions = {
+  res.cookie('jwt', token, {
     expires: new Date(
       Date.now() + process.env.JWT_COOKIE_EXPIRES_IN * 24 * 60 * 60 * 1000
     ),
-    // secure: req.secure || req.headers['x-forwarded-proto'] === 'https', // only set secure cookie if the request is HTTPS
-    httpOnly: true // recive the cookie and store it, send it automatically in each request
-  };
-  if (process.env.NODE_ENV === 'production') cookieOptions.secure = true;
-
-  res.cookie('jwt', token, cookieOptions);
+    httpOnly: true, // not readable from JS
+    sameSite: 'lax',
+    // HTTPS-only whenever the request actually came in over HTTPS (incl. behind a proxy)
+    secure: req.secure || req.headers['x-forwarded-proto'] === 'https'
+  });
   //remove the password from the output
   user.password = undefined;
 
@@ -36,19 +35,23 @@ const createSendToken = (user, statusCode, res) => {
   });
 };
 exports.signup = catchAsync(async (req, res, next) => {
+  // Whitelist fields: never let a client choose its own role (e.g. "admin").
   const newUser = await User.create({
     name: req.body.name,
     email: req.body.email,
-    role: req.body.role,
     password: req.body.password,
-    passwordConfirm: req.body.passwordConfirm,
-    passwordChangedAt: req.body.passwordChangedAt
+    passwordConfirm: req.body.passwordConfirm
   });
 
+  // A failed welcome email shouldn't fail the signup itself.
   const url = `${req.protocol}://${req.get('host')}/me`;
-  await new Email(newUser, url).sendWelcome();
+  try {
+    await new Email(newUser, url).sendWelcome();
+  } catch (err) {
+    console.error('Welcome email failed:', err.message);
+  }
 
-  createSendToken(newUser, 201, res);
+  createSendToken(newUser, 201, req, res);
 });
 
 exports.login = catchAsync(async (req, res, next) => {
@@ -65,7 +68,7 @@ exports.login = catchAsync(async (req, res, next) => {
     return next(new AppError('Incorrect email or password', 401));
   }
   // 3) if everything ok, return token to client
-  createSendToken(user, 200, res);
+  createSendToken(user, 200, req, res);
 });
 
 exports.logout = (req, res) => {
@@ -144,6 +147,16 @@ exports.isLoggedIn = async (req, res, next) => {
   next();
 };
 
+// For rendered pages: send logged-out visitors to the login page (and back).
+// Use after isLoggedIn.
+exports.requireLogin = (req, res, next) => {
+  if (res.locals.user) {
+    req.user = res.locals.user;
+    return next();
+  }
+  res.redirect(`/login?next=${encodeURIComponent(req.originalUrl)}`);
+};
+
 exports.restrictTo = (...roles) => {
   return (req, res, next) => {
     //role should be an array of roles that are allowed to access the route
@@ -211,7 +224,7 @@ exports.resetPassword = catchAsync(async (req, res, next) => {
   // 3) update changedPasswordAt property for the user
 
   // 4) log the user in, send JWT
-  createSendToken(user, 200, res);
+  createSendToken(user, 200, req, res);
 });
 
 exports.updatePassword = catchAsync(async (req, res, next) => {
@@ -225,5 +238,5 @@ exports.updatePassword = catchAsync(async (req, res, next) => {
   user.password = req.body.password;
   user.passwordConfirm = req.body.passwordConfirm;
   await user.save();
-  createSendToken(user, 200, res);
+  createSendToken(user, 200, req, res);
 });

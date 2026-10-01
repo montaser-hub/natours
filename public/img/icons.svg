@@ -1321,4 +1321,8 @@
 <path d="M14 10h-6c-0.6 0-1 0.4-1 1s0.4 1 1 1h6c0.6 0 1-0.4 1-1s-0.4-1-1-1z"></path>
 </symbol>
 </defs>
+<symbol id="icon-star-solid" viewBox="0 0 24 24">
+<title>star (solid)</title>
+<path d="M12 1.8l3.09 6.26 6.91 1.01-5 4.87 1.18 6.88L12 17.57l-6.18 3.25L7 13.94 2 9.07l6.91-1.01L12 1.8z"></path>
+</symbol>
 </svg>

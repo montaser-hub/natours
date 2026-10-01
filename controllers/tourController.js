@@ -29,7 +29,7 @@ const uploadTourImages = upload.fields([
 // upload.array('images', 5) req.files
 // proccess these images
 const resizeTourImages = catchAsync(async (req, res, next) => {
-  if (!req.files.imageCover || !req.files.images) return next();
+  if (!req.files || !req.files.imageCover || !req.files.images) return next();
 
   // 1) cover image
   // const imageCoverFileName = `tour-${req.params.id}-${Date.now()}-cover.jpeg`; instead use
@@ -62,7 +62,7 @@ const resizeTourImages = catchAsync(async (req, res, next) => {
 //////////2) ROUTE HANDLERs
 const aliasTopTours = (req, res, next) => {
   req.query.limit = '5';
-  req.query.sort = '-ratingAverage,price';
+  req.query.sort = '-ratingsAverage,price';
   req.query.fields = 'name,price,ratingsAverage,summary,difficulty';
   next();
 };
@@ -80,14 +80,14 @@ const deleteTour = factory.deleteOne(Tour);
 const getTourStats = catchAsync(async (req, res, next) => {
   const stats = await Tour.aggregate([
     {
-      $match: { ratingsAvrage: { $gte: 4.5 } } // filter out the tours
+      $match: { ratingsAverage: { $gte: 4.5 } } // only well-rated tours
     },
     {
       $group: {
-        _id: { $toUpper: '$difficulty' }, // group the results by null (to get a single result)
-        numTours: { $sum: 1 }, // calculate the average rating
-        avgRating: { $sum: '$ratingsAvrage' }, // calculate the average rating
-        numRatings: { $avg: '$ratingsQuantity' }, // calculate the average rating
+        _id: { $toUpper: '$difficulty' }, // one bucket per difficulty
+        numTours: { $sum: 1 },
+        numRatings: { $sum: '$ratingsQuantity' },
+        avgRating: { $avg: '$ratingsAverage' },
         avgPrice: { $avg: '$price' }, // calculate the average price
         minPrice: { $min: '$price' }, // find the minimum price
         maxPrice: { $max: '$price' } // find the maximum price
@@ -157,7 +157,7 @@ const getToursWithin = catchAsync(async (req, res, next) => {
   const [lat, lng] = latlng.split(',').map(Number);
 
   if (!lat || !lng) {
-    next(
+    return next(
       new AppError(
         'Please provide a latitude and longitude in the format lat, lng',
         400
@@ -189,7 +189,7 @@ const getDistances = catchAsync(async (req, res, next) => {
   const [lat, lng] = latlng.split(',').map(Number);
 
   if (!lat || !lng) {
-    next(
+    return next(
       new AppError(
         'Please provide a latitude and longitude in the format lat, lng',
         400
